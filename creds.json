@@ -1,0 +1,8 @@
+{
+    "ID": "SPOTIFYID",
+    "SECRET": "SPOTIFYSECRET",
+    "USER": "TWTICHBOTUSERNAME",
+    "OAuth": "OAUTH FOR BOT",
+    "Channel": "TWITCHTARGETCHANNEL",
+	"SpotifyUsername": "SPOTIFYUSERNAME"
+}
