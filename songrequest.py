@@ -1,6 +1,3 @@
-# Song Requests (Twitch IRC) via Spotify
-# Für http://twitch.tv/mandybimbom
-
 import requests
 import base64
 import json
@@ -19,8 +16,10 @@ import os
 from zipfile import ZipFile
 import sys
 
+TAG_VERSION = 1
+
 print("INFO: Suche nach neuer Version...")
-ghub = Github("chatn0ir07", "spotify-songrequests", 1)
+ghub = Github("chatn0ir07", "spotify-songrequests", TAG_VERSION)
 releases = ghub.CheckReleases()
 if releases["IsNew"]:
     filename, headers = urllib.request.urlretrieve(releases["Zipball_URL"])
@@ -32,7 +31,8 @@ if releases["IsNew"]:
     os.remove(filename)
     print("INFO: Archiv entpackt, bitte in den \"release\" Ordner navigieren und aktuelle Datei mit der neuen ersetzen")
     sys.exit(0)
-
+else:
+    print("INFO: Keine neue Version gefunden (stand: v%s)" % TAG_VERSION)
 SPOTIFYUSER = None
 
 temp = None
