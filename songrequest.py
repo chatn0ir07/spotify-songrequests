@@ -13,6 +13,25 @@ import math
 import time
 from IRCConnector import IRC
 from threading import Thread
+from Github import Github
+import urllib
+import os
+from zipfile import ZipFile
+import sys
+
+print("INFO: Suche nach neuer Version...")
+ghub = Github("chatn0ir07", "spotify-songrequests", 1)
+releases = ghub.CheckReleases()
+if releases["IsNew"]:
+    filename, headers = urllib.request.urlretrieve(releases["Zipball_URL"])
+    print("INFO: Neue Version unter %s gespeichert" % filename)
+    print("INFO: Entpacke Archiv...")
+    os.mkdir("release")
+    zp = ZipFile(filename, "r")
+    zp.extractall("release")
+    os.remove(filename)
+    print("INFO: Archiv entpackt, bitte in den \"release\" Ordner navigieren und aktuelle Datei mit der neuen ersetzen")
+    sys.exit(0)
 
 SPOTIFYUSER = None
 
@@ -77,26 +96,6 @@ def Chat(user, message, channel = None):
                     
 def test():
     client.GetMessage(Chat)
-
-############################################################################################################
-def CLISong(search):
-    arguments = search.split(" ")
-    result = sp.search("track:{}".format(" ".join(arguments[1:])))
-    if len(result["tracks"]["items"]) > 0:
-        WAITLIST.append({"track": result["tracks"]["items"][0], "Requester": "Terminal"})
-        print("Spiele als nächstes {} von {}".format(result['tracks']['items'][0]["name"],", ".join([x["name"] for x in result["tracks"]['items'][0]["artists"]])), temp["Channel"])
-    else:
-        print("Nichts für '{}' gefunden".format(" ".join(arguments)), temp["Channel"])
-"""
-def MainLoop():
-    while True:
-        se = input("Lied >> ")
-        CLISong(se)
-
-ml = Thread(target=MainLoop)
-ml.start()
-############################################################################################################
-"""
 
 
 t = Thread(target=test, args=())
