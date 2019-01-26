@@ -2,3 +2,7 @@ release/
 release/*
 __pycache__/
 __pycache__/*
+.cache*
+build/
+dist/
+*.spec

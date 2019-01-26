@@ -15,8 +15,16 @@ import urllib
 import os
 from zipfile import ZipFile
 import sys
+import random
 
-TAG_VERSION = 1
+TAG_VERSION = 2
+
+jokes = None
+
+with open("jokes.json", "r", encoding="utf-8") as file:
+    jokes = json.loads(file.read())
+
+
 
 print("INFO: Suche nach neuer Version...")
 ghub = Github("chatn0ir07", "spotify-songrequests", TAG_VERSION)
@@ -30,6 +38,7 @@ if releases["IsNew"]:
     zp.extractall("release")
     os.remove(filename)
     print("INFO: Archiv entpackt, bitte in den \"release\" Ordner navigieren und aktuelle Datei mit der neuen ersetzen")
+    input("Mit einem Tastendruck wird das Program beendet")
     sys.exit(0)
 else:
     print("INFO: Keine neue Version gefunden (stand: v%s)" % TAG_VERSION)
@@ -88,12 +97,20 @@ def Chat(user, message, channel = None):
                 else:
                     result = sp.search("track:{}".format(" ".join(arguments[1:])))
                     if len(result["tracks"]["items"]) > 0:
-                        WAITLIST.append({"track": result["tracks"]["items"][0], "Requester": user})
+                        WAITLIST.append({"track": result["tracks"]["items"][0], "Requester": user, "Name":result['tracks']['items'][0]["name"]})
                         client.Say("{} von {} wurde der Wartschlange hinzugefügt!".format(result['tracks']['items'][0]["name"],", ".join([x["name"] for x in result["tracks"]['items'][0]["artists"]])), temp["Channel"])
                         print("{} wurde von {} der Warteschlange hinzugefügt!".format(result["tracks"]["items"][0]["name"], user))
                     else:
                         client.Say("Nichts für '{}' gefunden".format(" ".join(arguments)), temp["Channel"])
-                    
+            elif command in ["song"]:
+                spx = sp.current_user_playing_track()["item"]
+                client.Say("/me Aktuell läuft {} von {}".format(spx["name"], ", ".join([x["name"] for x in spx["artists"]])  ))
+                client.Say("/me Die nächsten Songs: ")
+                for song in WAITLIST[0:3]:
+                    client.Say("/me {} von {}".format(song["Name"],", ".join([x["name"] for x in song["track"]["artists"]])))
+            elif command == "flachwitz":
+                client.Say("/me "+random.choice(jokes["Flachwitze"]))
+
 def test():
     client.GetMessage(Chat)
 
@@ -122,13 +139,13 @@ def NextSongHandler():
         #if len(WAITLIST) > 0 and inf["item"]["name"] == CURRENTSONG:
         if len(WAITLIST) > 0:
             if progress < end and progress > end-3000:
-
                 sp.start_playback(uris=[WAITLIST[0]["track"]["uri"]])
                 print("INFO: Spiele {} gewünscht von {}".format(WAITLIST[0]["track"]["name"], WAITLIST[0]["Requester"]))
                 inf = sp.current_user_playing_track()
                 progress = inf["progress_ms"]
                 end = inf["item"]["duration_ms"]
                 WAITLIST.pop(0)
+                time.sleep(end-4000)
         #elif len(WAITLIST) == 0 and progress > end-3000:
         elif len(WAITLIST) == 0:
             tmp = sp.current_user_playing_track()
