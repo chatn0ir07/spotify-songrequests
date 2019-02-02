@@ -17,7 +17,7 @@ from zipfile import ZipFile
 import sys
 import random
 
-TAG_VERSION = 2
+TAG_VERSION = 3
 
 jokes = None
 
