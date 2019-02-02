@@ -85,6 +85,7 @@ client.Login(temp["OAuth"], temp["USER"], temp["Channel"])
 
 
 def Chat(user, message, channel = None):
+    global sp
     if user != temp["USER"]:
         if message[0:1] == "!":
             command = message[1:].split(" ")[0]
@@ -95,13 +96,20 @@ def Chat(user, message, channel = None):
                     WAITLIST.append({"track": {"uri": "".join(arguments)}, "Requester": user})
                     client.Say("Spiele das Lied irgendwann mal")
                 else:
-                    result = sp.search("track:{}".format(" ".join(arguments[1:])))
-                    if len(result["tracks"]["items"]) > 0:
-                        WAITLIST.append({"track": result["tracks"]["items"][0], "Requester": user, "Name":result['tracks']['items'][0]["name"]})
-                        client.Say("{} von {} wurde der Wartschlange hinzugefügt!".format(result['tracks']['items'][0]["name"],", ".join([x["name"] for x in result["tracks"]['items'][0]["artists"]])), temp["Channel"])
-                        print("{} wurde von {} der Warteschlange hinzugefügt!".format(result["tracks"]["items"][0]["name"], user))
-                    else:
-                        client.Say("Nichts für '{}' gefunden".format(" ".join(arguments)), temp["Channel"])
+                    try:
+                        result = sp.search("track:{}".format(" ".join(arguments[1:])))
+                        if len(result["tracks"]["items"]) > 0:
+                            WAITLIST.append({"track": result["tracks"]["items"][0], "Requester": user, "Name":result['tracks']['items'][0]["name"]})
+                            client.Say("{} von {} wurde der Wartschlange hinzugefügt!".format(result['tracks']['items'][0]["name"],", ".join([x["name"] for x in result["tracks"]['items'][0]["artists"]])), temp["Channel"])
+                            print("{} wurde von {} der Warteschlange hinzugefügt!".format(result["tracks"]["items"][0]["name"], user))
+                        else:
+                            client.Say("Nichts für '{}' gefunden".format(" ".join(arguments)), temp["Channel"])
+                    except spotipy.client.SpotifyException as ex:
+                        print("INFO: Spotify API-Token ist abgelaufen, frage neuen an!")
+                        user = prompt_for_user_token("chatnoir-de", "user-read-currently-playing,user-read-playback-state,user-modify-playback-state,playlist-modify-public,playlist-read-private",client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri="http://www.chatn0ir.lima-city.de/spotify-requests")
+                        sp = spotipy.Spotify(auth=user)
+                        print("INFO: Spotify API-Token wurde aktualisiert")
+
             elif command in ["song"]:
                 spx = sp.current_user_playing_track()["item"]
                 client.Say("/me Aktuell läuft {} von {}".format(spx["name"], ", ".join([x["name"] for x in spx["artists"]])  ))
@@ -124,54 +132,46 @@ LASTSONG = None
 NEXTSONG = None
 CURRENTSONG = None
 
-
-
-
-def NextSongHandler():
-    global LASTSONG, NEXTSONG, CURRENTSONG, WAITLIST,sp
+def SongHandler():
+    global WAITLIST, sp
     try:
-        inf = sp.current_user_playing_track()
-        progress = inf["progress_ms"]
-        end = inf["item"]["duration_ms"]
-        if CURRENTSONG is None:
-            CURRENTSONG = inf["item"]["name"]
+        CurrentSong = sp.current_user_playing_track()
+        Progress = CurrentSong["progress_ms"]
+        End = CurrentSong["item"]["duration_ms"]
+        SleepTime = (End - Progress) - 4000
+        Skip = True if Progress > End - 4000 and len(WAITLIST) > 0 else False
+        if Skip and len(WAITLIST) > 0:
+            #sp.start_playback(uris=[WAITLIST[0]["track"]["uri"]])
+            sp.start_playback(uris=list([x["track"]["uri"] for x in WAITLIST])[::-1])
+            WAITLIST = []
+        else:
+            if SleepTime < 0 and len(WAITLIST) > 0:
+                #sp.start_playback(uris=[WAITLIST[0]["track"]["uri"]])
+                sp.start_playback(uris=list([x["track"]["uri"] for x in WAITLIST]))
+                print("Spiele {} vorgeschlagen von {}".format(WAITLIST[0]["track"]["name"], WAITLIST[0]["Requester"]))
+                #WAITLIST.pop()
+                WAITLIST = []
+                SongHandler()
+            else:
+                if CurrentSong["is_playing"] and SleepTime > 0:
+                    print("Warte {} Sekunden bis zum Ende des Songs".format(round(SleepTime/1000,2)))
+                    time.sleep(SleepTime/1000)
+                    SongHandler()
+                elif not CurrentSong["is_playing"] and SleepTime < 3000:
+                    sp.start_playback(context_uri=plist)
+                    sp.shuffle(True)
+                    print("Playlist gestartet")
 
-        #if len(WAITLIST) > 0 and inf["item"]["name"] == CURRENTSONG:
-        if len(WAITLIST) > 0:
-            if progress < end and progress > end-3000:
-                sp.start_playback(uris=[WAITLIST[0]["track"]["uri"]])
-                print("INFO: Spiele {} gewünscht von {}".format(WAITLIST[0]["track"]["name"], WAITLIST[0]["Requester"]))
-                inf = sp.current_user_playing_track()
-                progress = inf["progress_ms"]
-                end = inf["item"]["duration_ms"]
-                WAITLIST.pop(0)
-                time.sleep(end-4000)
-        #elif len(WAITLIST) == 0 and progress > end-3000:
-        elif len(WAITLIST) == 0:
-            tmp = sp.current_user_playing_track()
-            if not tmp["is_playing"]:
+        if len(WAITLIST) == 0:
+            if not CurrentSong["is_playing"]:
                 sp.start_playback(context_uri=plist)
                 sp.shuffle(True)
-
-        if CURRENTSONG != inf["item"]["name"]:
-            CURRENTSONG = inf["item"]["name"]
-        
-        if progress < end:
-            if ((end-progress)/1000) > 4:
-                print(">> Warte bis zum Ende des Lieds ({} sec) {}/{}".format(math.floor((end-progress)/1000)-2,math.floor(progress/1000),math.floor(end/1000)))
-                time.sleep(((end-progress)/1000)-2)
-                NextSongHandler()
-            else:
-                NextSongHandler()
+        #Recall function
+        SongHandler()
     except spotipy.client.SpotifyException as ex:
         print("INFO: Spotify API-Token ist abgelaufen, frage neuen an!")
         user = prompt_for_user_token("chatnoir-de", "user-read-currently-playing,user-read-playback-state,user-modify-playback-state,playlist-modify-public,playlist-read-private",client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri="http://www.chatn0ir.lima-city.de/spotify-requests")
         sp = spotipy.Spotify(auth=user)
         print("INFO: Spotify API-Token wurde aktualisiert")
-        NextSongHandler()
-    except Exception as fuck:
-        print("KRITISCH: Ein fehler ist aufgetreten: ")
-        print(fuck)
-        NextSongHandler()
-    NextSongHandler()
-NextSongHandler()
+        SongHandler()
+SongHandler()
