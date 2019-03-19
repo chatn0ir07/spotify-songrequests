@@ -17,7 +17,7 @@ from zipfile import ZipFile
 import sys
 import random
 
-TAG_VERSION = 3
+TAG_VERSION = 4
 
 jokes = None
 
@@ -147,7 +147,7 @@ def SongHandler():
         else:
             if SleepTime < 0 and len(WAITLIST) > 0:
                 #sp.start_playback(uris=[WAITLIST[0]["track"]["uri"]])
-                sp.start_playback(uris=list([x["track"]["uri"] for x in WAITLIST]))
+                sp.start_playback(uris=list(reversed([x["track"]["uri"] for x in WAITLIST])))
                 print("Spiele {} vorgeschlagen von {}".format(WAITLIST[0]["track"]["name"], WAITLIST[0]["Requester"]))
                 #WAITLIST.pop()
                 WAITLIST = []
